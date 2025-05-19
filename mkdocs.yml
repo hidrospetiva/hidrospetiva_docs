@@ -1,1 +1,5 @@
-site_name: Hidrospetiva Docs
+site_name: StreamWater Docs
+theme:
+  name: readthedocs
+markdown_extensions: 
+  - pymdownx.tasklist # Tasks list

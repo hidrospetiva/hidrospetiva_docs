@@ -15,3 +15,27 @@ For full documentation visit [mkdocs.org](https://www.mkdocs.org).
     docs/
         index.md  # The documentation homepage.
         ...       # Other markdown pages, images and other files.
+
+# Tabela
+
+| Nome | Idade |
+| ---- | ----- |
+| João | 38 |
+| Bruno | 33 |
+
+### Código
+```
+def xpto():
+    return True
+```
+
+# Tarefas
+
+- [ ] Configurar ambiente de desenvolvimento
+- [ ] Corrigir bug na autenticação
+- [ ] Implementar API de sensores
+- [ ] Atualizar documentação
+- [ ] Testar funcionalidades
+- [x] Fazer deploy da aplicação
+- [ ] Reunião com o cliente
+- [ ] Revisar código com a equipe
