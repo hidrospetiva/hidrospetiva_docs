@@ -42,15 +42,15 @@
               <ul class="current">
                 <li class="toctree-l1 current"><a class="reference internal current" href="#">Welcome to Hidrospetiva Docs to StreamWater Project</a>
     <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#tasks">Tasks</a>
+    </li>
     <li class="toctree-l2"><a class="reference internal" href="#commands">Commands</a>
     </li>
     <li class="toctree-l2"><a class="reference internal" href="#project-layout">Project layout</a>
     </li>
+    <li class="toctree-l2"><a class="reference internal" href="#code-to-interact-with-the-api">Code to interact with the API</a>
+    </li>
     </ul>
-                </li>
-              </ul>
-              <ul>
-                <li class="toctree-l1"><a class="reference internal" href="pagina2/">Esta é a página 2</a>
                 </li>
               </ul>
       </div>
@@ -77,60 +77,160 @@
             <div class="section" itemprop="articleBody">
               
                 <h1 id="welcome-to-hidrospetiva-docs-to-streamwater-project">Welcome to Hidrospetiva Docs to StreamWater Project</h1>
-<p>For full documentation visit <a href="https://www.mkdocs.org">mkdocs.org</a>.</p>
+<h2 id="tasks">Tasks</h2>
+<ul class="task-list">
+<li class="task-list-item"><input type="checkbox" disabled/> Set up development environment  </li>
+<li class="task-list-item"><input type="checkbox" disabled/> Consume sensor API  </li>
+<li class="task-list-item"><input type="checkbox" disabled/> Update documentation</li>
+</ul>
 <h2 id="commands">Commands</h2>
 <ul>
-<li><code>mkdocs new [dir-name]</code> - Create a new project.</li>
-<li><code>mkdocs serve</code> - Start the live-reloading docs server.</li>
-<li><code>mkdocs build</code> - Build the documentation site.</li>
-<li><code>mkdocs -h</code> - Print help message and exit.</li>
+<li><code>pytho version</code> - Check python version.</li>
+<li><code>python -m venv venv</code> - Create a virtual environment.</li>
+<li><code>source venv/bin/activate</code> - Activate virtual enviroment.</li>
+<li><code>pip install httpx</code> - Install the library to make a request to the API.</li>
 </ul>
 <h2 id="project-layout">Project layout</h2>
-<pre><code>mkdocs.yml    # The configuration file.
-docs/
+<pre><code>venv    # The virtual environment file.
+main/
     index.md  # The documentation homepage.
     ...       # Other markdown pages, images and other files.
 </code></pre>
-<h1 id="tabela">Tabela</h1>
-<table>
-<thead>
-<tr>
-<th>Nome</th>
-<th>Idade</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>João</td>
-<td>38</td>
-</tr>
-<tr>
-<td>Bruno</td>
-<td>33</td>
-</tr>
-</tbody>
-</table>
-<h3 id="codigo">Código</h3>
-<pre><code>def xpto():
-    return True
+<h2 id="code-to-interact-with-the-api">Code to interact with the API</h2>
+<pre><code>iimport httpx
+from datetime import datetime, timedelta
+
+class SyncAPIClient:
+    def __init__(self, auth_url, api_url, timeout=10.0):
+        self.auth_url = auth_url
+        self.api_url = api_url
+        self.token = None
+        self.token_expiry = None
+        self.timeout = timeout
+        self.client = httpx.Client(timeout=timeout)
+
+    def __del__(self):
+        &quot;&quot;&quot;Ensures that the client is closed when the object is destroyed&quot;&quot;&quot;
+        self.client.close()
+
+    def get_token(self, client_id, client_secret):
+        &quot;&quot;&quot;Gets an authentication token from the API synchronously&quot;&quot;&quot;
+
+        # Check if we already have a valid token
+        if self.token and self.token_expiry and datetime.now() &lt; self.token_expiry:
+            return self.token
+
+        # Prepare authentication data
+        auth_data = {
+            'client_id': client_id,
+            'client_secret': client_secret,
+            'grant_type': 'client_credentials'
+        }
+
+        try:
+            # Make the request to get the token
+            response = self.client.post(self.auth_url, data=auth_data)
+            response.raise_for_status()
+
+            # Extract the token and its validity from the response
+            token_info = response.json()
+            self.token = token_info.get('access_token')
+            expires_in = token_info.get('expires_in', 3600)  # Default to 1 hour
+
+            # Calculate when the token expires
+            self.token_expiry = datetime.now() + timedelta(seconds=expires_in)
+
+            return self.token
+
+        except httpx.HTTPError as e:
+            print(f&quot;Error getting token: {e}&quot;)
+            raise
+
+    def get_api_data(self, endpoint, params=None, client_id=None, client_secret=None):
+        &quot;&quot;&quot;Makes a GET call to the API using the Bearer token synchronously&quot;&quot;&quot;
+
+        # Make sure we have a valid token
+        token = self.get_token(client_id, client_secret)
+
+        # Prepare headers with the Bearer token
+        headers = {
+            'Authorization': f'Bearer {token}',
+            'Accept': 'application/json'
+        }
+
+        try:
+            # Make the GET request to the API
+            response = self.client.get(
+                f&quot;{self.api_url}/{endpoint}&quot;, 
+                headers=headers,
+                params=params  # Query string parameters
+            )
+            response.raise_for_status()
+
+            return response.json()
+
+        except httpx.HTTPError as e:
+            print(f&quot;Error in API call: {e}&quot;)
+            raise
+
+# Main function that exemplifies usage
+def main():
+    # API Configuration
+    AUTH_URL = &quot;https://api.example.com/oauth/token&quot;
+    API_URL = &quot;https://api.example.com/v1&quot;
+    CLIENT_ID = &quot;your_client_id&quot;
+    CLIENT_SECRET = &quot;your_client_secret&quot;
+
+    # Initialize the API client
+    api_client = SyncAPIClient(AUTH_URL, API_URL)
+
+    # Parameters for the GET query (optional)
+    params = {
+        &quot;limit&quot;: 10,
+        &quot;sort&quot;: &quot;created_at&quot;
+    }
+
+    # Make the GET call to the API
+    try:
+        result = api_client.get_api_data(
+            &quot;users&quot;, 
+            params=params, 
+            client_id=CLIENT_ID, 
+            client_secret=CLIENT_SECRET
+        )
+        print(&quot;Data obtained from API:&quot;, result)
+
+        # Example of how to make several sequential GET calls
+        endpoints = [&quot;users&quot;, &quot;products&quot;, &quot;categories&quot;]
+        results = []
+
+        for endpoint in endpoints:
+            try:
+                result = api_client.get_api_data(
+                    endpoint, 
+                    params=params, 
+                    client_id=CLIENT_ID, 
+                    client_secret=CLIENT_SECRET
+                )
+                results.append(result)
+                print(f&quot;Data obtained from {endpoint}: {len(result)} items&quot;)
+            except Exception as e:
+                print(f&quot;Error getting data from {endpoint}: {e}&quot;)
+
+    except Exception as e:
+        print(f&quot;Operation failure: {e}&quot;)
+    finally:
+        # Ensure the HTTP client is closed
+        api_client.client.close()
+
+# Script entry point
+if __name__ == &quot;__main__&quot;:
+    # Execute the main function
+    main()
 </code></pre>
-<h1 id="tarefas">Tarefas</h1>
-<ul class="task-list">
-<li class="task-list-item"><input type="checkbox" disabled/> Configurar ambiente de desenvolvimento</li>
-<li class="task-list-item"><input type="checkbox" disabled/> Corrigir bug na autenticação</li>
-<li class="task-list-item"><input type="checkbox" disabled/> Implementar API de sensores</li>
-<li class="task-list-item"><input type="checkbox" disabled/> Atualizar documentação</li>
-<li class="task-list-item"><input type="checkbox" disabled/> Testar funcionalidades</li>
-<li class="task-list-item"><input type="checkbox" disabled checked/> Fazer deploy da aplicação</li>
-<li class="task-list-item"><input type="checkbox" disabled/> Reunião com o cliente</li>
-<li class="task-list-item"><input type="checkbox" disabled/> Revisar código com a equipe</li>
-</ul>
               
             </div>
           </div><footer>
-    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="pagina2/" class="btn btn-neutral float-right" title="Esta é a página 2">Next <span class="icon icon-circle-arrow-right"></span></a>
-    </div>
 
   <hr/>
 
@@ -153,8 +253,6 @@ docs/
     
     
     
-      <span><a href="pagina2/" style="color: #fcfcfc">Next &raquo;</a></span>
-    
   </span>
 </div>
     <script src="js/jquery-3.6.0.min.js"></script>
@@ -173,5 +271,5 @@ docs/
 
 <!--
 MkDocs version : 1.6.1
-Build Date UTC : 2025-05-19 20:32:25.474303+00:00
+Build Date UTC : 2025-05-20 13:21:25.653893+00:00
 -->
